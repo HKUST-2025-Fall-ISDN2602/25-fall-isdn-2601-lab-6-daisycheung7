@@ -1,0 +1,122 @@
+/*Change all the ? in the code, add code in ???, modify getPosition() */
+
+//L298N Driver Pin 
+#define MOTOR_ENA 25  // Replace the ? with the GPIO pin you selected to connect ENA
+#define MOTOR_IN1 26  // Replace the ? with the GPIO pin you selected to connect IN1
+#define MOTOR_IN2 27  // Replace the ? with the GPIO pin you selected to connect IN2
+
+
+//Encoder Pin 
+#define ENCODER_PINA 13 // Replace the ? with the GPIO pin you selected to connect encoder A
+#define ENCODER_PINB 14 // Replace the ? with the GPIO pin you selected to connect encoder B
+
+//Encoder Counter
+volatile long encoderCount = 0; 
+volatile double position = 0; 
+
+// Serial Monitor command for rotation direction
+String command;
+
+// interrupt
+void IRAM_ATTR encoderInterrupt() {
+  if (digitalRead(ENCODER_PINA) != digitalRead(ENCODER_PINB)) {
+    encoderCount++;
+  } else {
+    encoderCount--;
+  }
+}
+
+//Serial Display Function 
+void getState(){
+  Serial.print("Count: ");
+  Serial.println(encoderCount);
+  Serial.print("Position: ");
+  Serial.println(getPosition());
+  delay(50);
+}
+
+// To get the current position
+/*Modify this function*/ 
+double getPosition() {
+  // Calculate the current position based on encoder count
+  position = float(encoderCount) * 360.0 / 1000.0; // Replace 1000.0 with the actual counts per revolution
+
+  if (position < 0) {
+    position = position + 360; // Ensure position is positive
+  }
+  
+  return position;
+}
+
+void setup() {
+  
+  /* pin mode for pins connected with L298N driver  */
+  pinMode(MOTOR_IN1, OUTPUT);
+  pinMode(MOTOR_IN2, OUTPUT); 
+  pinMode(MOTOR_ENA, OUTPUT); // Set MOTOR_ENA as OUTPUT for analogWrite
+
+  // encoder pins mode for interrupt
+  pinMode(ENCODER_PINA, INPUT_PULLUP);
+  pinMode(ENCODER_PINB, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PINA), encoderInterrupt, CHANGE);
+  
+  /* set up baud rate  */
+  Serial.begin(115200);
+
+  // Initialize motor to stopped state
+  digitalWrite(MOTOR_IN1, LOW);
+  digitalWrite(MOTOR_IN2, LOW);
+  analogWrite(MOTOR_ENA, 0);
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    command = Serial.readStringUntil('\n'); // Read the incoming command
+    command.trim(); // Remove any leading or trailing whitespace
+    
+    if (command == "F") {
+      /*Forward rotation direction*/
+      digitalWrite(MOTOR_IN1, LOW);
+      digitalWrite(MOTOR_IN2, HIGH);
+      /*Set a speed for your motor*/
+      analogWrite(MOTOR_ENA, 50);
+
+    } 
+    else if (command == "B") {
+      /*Backward rotation direction*/
+      digitalWrite(MOTOR_IN1, HIGH);
+      digitalWrite(MOTOR_IN2, LOW);
+      /*Set a speed for your motor*/
+      analogWrite(MOTOR_ENA, 5);
+    }
+    else if (command == "S") {
+      /*Stop motor*/
+      digitalWrite(MOTOR_IN1, LOW);
+      digitalWrite(MOTOR_IN2, LOW);
+      analogWrite(MOTOR_ENA, 0);
+    }
+  } 
+
+  //print the encoderCount and Position  
+  getState(); 
+
+  /* Reset encoder count*/
+  if (position > 360 || position < 0) {
+    encoderCount = 0;
+
+    
+  } 
+ //Read values of A and B using digitalRead(Pin)
+ int A_data = 0;
+ int B_data = 0;
+
+  A_data=digitalRead(ENCODER_PINA);
+  B_data=digitalRead(ENCODER_PINB);
+    // Plot A B in Serial Plotter
+  Serial.print("A:");
+  Serial.print(A_data);
+  Serial.print(",");
+  Serial.print("B:");
+  Serial.print(B_data);
+  Serial.println("\t");
+} 
